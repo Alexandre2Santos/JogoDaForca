@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <time.h>
 
 // ============================================================================
 // DECLARAÇÕES DE FUNÇÕES
@@ -31,11 +32,20 @@ FILE *fecharArg(FILE *arg);
 void adicionarDicas(void);
 void mostrarDicas(void);
 void removerDica(void);
+void editarDica(void);
 
 // Funções de gerenciamento de palavras
 void adicionarPalavras(void);
 void mostrarPalavras(void);
 void removerPalavra(void);
+void editarPalavra(void);
+
+// Função de sorteio e jogo
+void sorteio(void); // Seleciona uma palavra aleatória e exibe para teste (pode ser usado no modo forca)
+bool sortearPalavra(char palavra[], char dica[]);
+unsigned int contarPalavras(void);
+unsigned int palavraSorteada(void);
+void jogarForca(void);
 
 // ============================================================================
 // FUNÇÃO PRINCIPAL - MENU INTERATIVO
@@ -65,6 +75,11 @@ int main(void)
         printf("\n4) Adicionar palavra");
         printf("\n5) Listar palavras");
         printf("\n6) Remover palavra");
+        printf("\n\n--- JOGO ---");
+        printf("\n7) Jogar forca");
+        printf("\n\n--- EDITAR ---");
+        printf("\n8) Editar dica");
+        printf("\n9) Editar palavra");
         printf("\n\n--- SAIR ---");
         printf("\n0) Sair");
         printf("\nEscolha: ");
@@ -119,6 +134,21 @@ int main(void)
         if (opcao == 6)
         {
             removerPalavra();
+            continue;
+        }
+        if (opcao == 7)
+        {
+            jogarForca();
+            continue;
+        }
+        if (opcao == 8)
+        {
+            editarDica();
+            continue;
+        }
+        if (opcao == 9)
+        {
+            editarPalavra();
             continue;
         }
     }
@@ -371,6 +401,256 @@ void removerDica(void)
     printf("Dica removida com sucesso.\n");
 }
 
+void editarDica(void)
+{
+    FILE *arg = abrir("dicas.txt", "r");
+    if (arg == NULL)
+    {
+        return;
+    }
+
+    char linhas[200][201];
+    int total = 0;
+    int c;
+
+    while (total < 200 && fgets(linhas[total], sizeof(linhas[total]), arg))
+    {
+        linhas[total][strcspn(linhas[total], "\r\n")] = '\0';
+        total++;
+    }
+
+    fecharArg(arg);
+
+    if (total == 0)
+    {
+        printf("Nenhuma dica para editar.\n");
+        return;
+    }
+
+    printf("\nDicas disponiveis:\n");
+    for (int i = 0; i < total; i++)
+    {
+        printf("%2d) %s\n", i + 1, linhas[i]);
+    }
+
+    printf("Escolha o numero da dica para editar (0 para cancelar): ");
+    int escolha;
+    if (scanf("%d", &escolha) != 1)
+    {
+        while ((c = getchar()) != '\n' && c != EOF)
+        {
+        }
+        printf("Entrada invalida. Nao foi editado.\n");
+        return;
+    }
+
+    while ((c = getchar()) != '\n' && c != EOF)
+    {
+    }
+
+    if (escolha <= 0 || escolha > total)
+    {
+        printf("Operacao cancelada.\n");
+        return;
+    }
+
+    int editar = escolha - 1;
+    char dicaNova[201];
+
+    printf("Dica atual: %s\n", linhas[editar]);
+    printf("Digite a nova dica: ");
+    if (fgets(dicaNova, sizeof(dicaNova), stdin) == NULL)
+    {
+        printf("Erro na leitura.\n");
+        return;
+    }
+    dicaNova[strcspn(dicaNova, "\r\n")] = '\0';
+
+    if (dicaNova[0] == '\0')
+    {
+        printf("Dica vazia. Operacao cancelada.\n");
+        return;
+    }
+
+    for (int i = 0; i < total; i++)
+    {
+        if (i != editar && strcmp(linhas[i], dicaNova) == 0)
+        {
+            printf("Ja existe uma dica igual. Nao sera editado.\n");
+            return;
+        }
+    }
+
+    printf("Confirmar alteracao (s/n): ");
+    char confirmacao = '\0';
+    if (scanf(" %c", &confirmacao) != 1)
+    {
+        confirmacao = '\0';
+    }
+    while ((c = getchar()) != '\n' && c != EOF)
+    {
+    }
+
+    if (confirmacao != 's')
+    {
+        printf("Operacao cancelada.\n");
+        return;
+    }
+
+    strcpy(linhas[editar], dicaNova);
+
+    arg = abrir("dicas.txt", "w");
+    if (arg == NULL)
+    {
+        return;
+    }
+
+    for (int i = 0; i < total; i++)
+    {
+        fprintf(arg, "%s\n", linhas[i]);
+    }
+
+    fecharArg(arg);
+    printf("Dica editada com sucesso.\n");
+}
+
+void editarPalavra(void)
+{
+    FILE *arg = abrir("palavras.txt", "r");
+    if (arg == NULL)
+    {
+        return;
+    }
+
+    char linhas[200][252];
+    int total = 0;
+    int c;
+    char palavraAtual[51];
+    char dicaAtual[201];
+
+    while (total < 200 && fgets(linhas[total], sizeof(linhas[total]), arg))
+    {
+        linhas[total][strcspn(linhas[total], "\r\n")] = '\0';
+        total++;
+    }
+
+    fecharArg(arg);
+
+    if (total == 0)
+    {
+        printf("Nenhuma palavra para editar.\n");
+        return;
+    }
+
+    printf("\nPalavras disponiveis:\n");
+    for (int i = 0; i < total; i++)
+    {
+        sscanf(linhas[i], "%50[^|]|%200[^\n]", palavraAtual, dicaAtual);
+        printf("%2d) %s | %s\n", i + 1, palavraAtual, dicaAtual);
+    }
+
+    printf("Escolha o numero da palavra para editar (0 para cancelar): ");
+    int escolha;
+    if (scanf("%d", &escolha) != 1)
+    {
+        while ((c = getchar()) != '\n' && c != EOF)
+        {
+        }
+        printf("Entrada invalida. Nao foi editado.\n");
+        return;
+    }
+
+    while ((c = getchar()) != '\n' && c != EOF)
+    {
+    }
+
+    if (escolha <= 0 || escolha > total)
+    {
+        printf("Operacao cancelada.\n");
+        return;
+    }
+
+    int editar = escolha - 1;
+    sscanf(linhas[editar], "%50[^|]|%200[^\n]", palavraAtual, dicaAtual);
+
+    char novaPalavra[51];
+    char novaDica[201];
+
+    printf("Palavra atual: %s\nDica atual: %s\n", palavraAtual, dicaAtual);
+    printf("Digite a nova palavra: ");
+    if (fgets(novaPalavra, sizeof(novaPalavra), stdin) == NULL)
+    {
+        printf("Erro na leitura.\n");
+        return;
+    }
+    novaPalavra[strcspn(novaPalavra, "\r\n")] = '\0';
+
+    if (novaPalavra[0] == '\0')
+    {
+        printf("Palavra vazia. Operacao cancelada.\n");
+        return;
+    }
+
+    printf("Digite a nova dica: ");
+    if (fgets(novaDica, sizeof(novaDica), stdin) == NULL)
+    {
+        printf("Erro na leitura.\n");
+        return;
+    }
+    novaDica[strcspn(novaDica, "\r\n")] = '\0';
+
+    if (novaDica[0] == '\0')
+    {
+        strcpy(novaDica, "Sem dica");
+    }
+
+    for (int i = 0; i < total; i++)
+    {
+        if (i != editar)
+        {
+            char outraPalavra[51], outraDica[201];
+            sscanf(linhas[i], "%50[^|]|%200[^\n]", outraPalavra, outraDica);
+            if (strcmp(outraPalavra, novaPalavra) == 0)
+            {
+                printf("Ja existe uma palavra igual. Nao sera editado.\n");
+                return;
+            }
+        }
+    }
+
+    printf("Confirmar alteracao (s/n): ");
+    char confirmacao = '\0';
+    if (scanf(" %c", &confirmacao) != 1)
+    {
+        confirmacao = '\0';
+    }
+    while ((c = getchar()) != '\n' && c != EOF)
+    {
+    }
+
+    if (confirmacao != 's')
+    {
+        printf("Operacao cancelada.\n");
+        return;
+    }
+
+    snprintf(linhas[editar], sizeof(linhas[editar]), "%s|%s", novaPalavra, novaDica);
+
+    arg = abrir("palavras.txt", "w");
+    if (arg == NULL)
+    {
+        return;
+    }
+
+    for (int i = 0; i < total; i++)
+    {
+        fprintf(arg, "%s\n", linhas[i]);
+    }
+
+    fecharArg(arg);
+    printf("Palavra editada com sucesso.\n");
+}
+
 void adicionarPalavras(void)
 // ============================================================================
 // ADICIONA UMA PALAVRA VINCULADA A UMA DICA
@@ -518,6 +798,117 @@ void adicionarPalavras(void)
     fecharArg(arg);
 }
 
+void sorteio(void)
+{
+    char palavra[51];
+    char dica[201];
+
+    if (!sortearPalavra(palavra, dica))
+    {
+        printf("Nao foi possivel sortear palavra. Verifique se 'palavras.txt' existe e possui registros.\n");
+        return;
+    }
+
+    printf("Palavra sorteada: %s\n", palavra);
+    printf("Dica sorteada: %s\n", dica);
+}
+
+bool sortearPalavra(char palavra[], char dica[])
+{
+    FILE *arg = abrir("palavras.txt", "r");
+    if (arg == NULL)
+        return false;
+
+    char linha[252];
+    unsigned int total = 0;
+
+    while (fgets(linha, sizeof(linha), arg))
+    {
+        total++;
+    }
+
+    if (total == 0)
+    {
+        fecharArg(arg);
+        return false;
+    }
+
+    srand((unsigned int)time(NULL));
+    unsigned int indice = rand() % total;
+
+    rewind(arg);
+    unsigned int atual = 0;
+
+    while (fgets(linha, sizeof(linha), arg))
+    {
+        linha[strcspn(linha, "\r\n")] = '\0';
+        if (atual == indice)
+        {
+            if (sscanf(linha, "%50[^|]|%200[^\n]", palavra, dica) < 1)
+            {
+                fecharArg(arg);
+                return false;
+            }
+            if (dica[0] == '\0')
+            {
+                strcpy(dica, "Sem dica");
+            }
+            fecharArg(arg);
+            return true;
+        }
+        atual++;
+    }
+
+    fecharArg(arg);
+    return false;
+}
+
+unsigned int contarPalavras(void)
+{
+    FILE *arg = abrir("palavras.txt", "r");
+    if (arg == NULL)
+        return 0;
+
+    char linha[252];
+    unsigned int total = 0;
+
+    while (fgets(linha, sizeof(linha), arg))
+    {
+        total++;
+    }
+
+    fecharArg(arg);
+    return total;
+}
+
+unsigned int palavraSorteada(void)
+{
+    unsigned int total = contarPalavras();
+    if (total == 0)
+        return UINT_MAX;
+
+    srand((unsigned int)time(NULL));
+    return rand() % total;
+}
+
+void jogarForca(void)
+{
+    printf("\n=== JOGO DA FORCA ===\n");
+
+    char palavra[51];
+    char dica[201];
+
+    if (!sortearPalavra(palavra, dica))
+    {
+        printf("Nenhuma palavra disponivel. Adicione palavras antes de jogar.\n");
+        return;
+    }
+
+    printf("Dica: %s\n", dica);
+    printf("(Modo simplificado) Palavra sorteada: %s\n", palavra);
+    printf("Implementacao completa do jogo pode ser adicionada aqui.\n");
+}
+
 void mostrarPalavras(void)
 // ============================================================================
 // EXIBE TODAS AS PALAVRAS COM SUAS DICAS ASSOCIADAS
@@ -592,6 +983,7 @@ void removerPalavra(void)
     int c;                 // Variável para limpar buffer
 
     // Carrega todas as palavras em memória
+    while (total < 200 && fgets(linhas[total], sizeof(linhas[total]), arg))
     {
         linhas[total][strcspn(linhas[total], "\r\n")] = '\0';
         total++;
