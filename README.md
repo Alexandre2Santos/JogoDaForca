@@ -230,6 +230,18 @@ O código pode ser melhorado e expandido com:
 
 ---
 
+## Dicas para manutenção e evolução
+
+- Use constantes (`#define`) para limites de tamanhos de buffer (ex: `DICA_MAX`), evitando números mágicos como `200` e `50` no código.
+- Separe lógica de UI (entrada/saída) em funções distintas para facilitar testes unitários.
+- Crie um módulo `forca.c` com `forca.h` para isolar o jogo da forca da gestão de arquivos.
+- Adote um arquivo de configuração (`config.txt`) para caminhos e limites de caracteres, permitindo ajustes sem recompilar.
+- Implemente verificação de encoding (`UTF-8`) ao ler arquivos para evitar caracteres inesperados.
+- Documente cada função no `main.c` usando cabeçalho com parâmetros e comportamento esperado.
+- Inclua testes automatizados (scripts bash/PowerShell) para cada comando: adicionar, listar, remover, editar, jogar.
+
+---
+
 ## Requisitos
 
 - **Compilador C** - GCC ou MinGW

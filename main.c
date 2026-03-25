@@ -87,11 +87,14 @@ int main(void)
         printf("\n8) Editar dica");
         printf("\n9) Editar palavra");
         printf("\n10) Resetar palavras sorteadas");
+        // TODO: remover linha duplicada abaixo (mesmo texto) e evitar inconsistência de menu em futuras atualizações
         printf("\n10) Resetar palavras sorteadas");
         printf("\n11) Mostrar historico de partidas");
         printf("\n\n--- SAIR ---");
         printf("\n0) Sair");
         printf("\nEscolha: ");
+
+        // TODO: refatorar para um array de estruturas com labels/opcoes + callback, permitindo menu dinâmico e menos if/else.
 
         // Lê a opção do usuário com validação
         if (scanf("%d", &opcao) != 1)
