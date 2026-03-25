@@ -43,8 +43,14 @@ void editarPalavra(void);
 // Função de sorteio e jogo
 void sorteio(void); // Seleciona uma palavra aleatória e exibe para teste (pode ser usado no modo forca)
 bool sortearPalavra(char palavra[], char dica[]);
+bool palavraUsada(const char *palavra);
+void guardarPalavraUsada(const char *palavra);
+void resetarPalavrasUsadas(void);
+void gravarHistorico(const char *palavra, bool venceu, int erros, int tentativas);
+void mostrarHistorico(void);
 unsigned int contarPalavras(void);
 unsigned int palavraSorteada(void);
+void desenharBoneco(int erros);
 void jogarForca(void);
 
 // ============================================================================
@@ -80,6 +86,9 @@ int main(void)
         printf("\n\n--- EDITAR ---");
         printf("\n8) Editar dica");
         printf("\n9) Editar palavra");
+        printf("\n10) Resetar palavras sorteadas");
+        printf("\n10) Resetar palavras sorteadas");
+        printf("\n11) Mostrar historico de partidas");
         printf("\n\n--- SAIR ---");
         printf("\n0) Sair");
         printf("\nEscolha: ");
@@ -149,6 +158,16 @@ int main(void)
         if (opcao == 9)
         {
             editarPalavra();
+            continue;
+        }
+        if (opcao == 10)
+        {
+            resetarPalavrasUsadas();
+            continue;
+        }
+        if (opcao == 11)
+        {
+            mostrarHistorico();
             continue;
         }
     }
@@ -833,34 +852,61 @@ bool sortearPalavra(char palavra[], char dica[])
         return false;
     }
 
-    srand((unsigned int)time(NULL));
-    unsigned int indice = rand() % total;
+    // Carrega todas as palavras (palavra|dica) e mantém as candidatas não usadas
+    char linhas[200][252];
+    char palavras[200][51];
+    char dicas[200][201];
+    int totalLinhas = 0;
 
     rewind(arg);
-    unsigned int atual = 0;
-
-    while (fgets(linha, sizeof(linha), arg))
+    while (totalLinhas < 200 && fgets(linhas[totalLinhas], sizeof(linhas[totalLinhas]), arg))
     {
-        linha[strcspn(linha, "\r\n")] = '\0';
-        if (atual == indice)
+        linhas[totalLinhas][strcspn(linhas[totalLinhas], "\r\n")] = '\0';
+        if (sscanf(linhas[totalLinhas], "%50[^|]|%200[^\n]", palavras[totalLinhas], dicas[totalLinhas]) < 1)
         {
-            if (sscanf(linha, "%50[^|]|%200[^\n]", palavra, dica) < 1)
-            {
-                fecharArg(arg);
-                return false;
-            }
-            if (dica[0] == '\0')
-            {
-                strcpy(dica, "Sem dica");
-            }
-            fecharArg(arg);
-            return true;
+            totalLinhas++;
+            continue;
         }
-        atual++;
+        if (dicas[totalLinhas][0] == '\0')
+        {
+            strcpy(dicas[totalLinhas], "Sem dica");
+        }
+        totalLinhas++;
     }
 
-    fecharArg(arg);
-    return false;
+    fclose(arg);
+
+    if (totalLinhas == 0)
+        return false;
+
+    int candidatas[200];
+    int totalCandidatas = 0;
+
+    for (int i = 0; i < totalLinhas; i++)
+    {
+        if (!palavraUsada(palavras[i]))
+        {
+            candidatas[totalCandidatas++] = i;
+        }
+    }
+
+    if (totalCandidatas == 0)
+    {
+        resetarPalavrasUsadas();
+        totalCandidatas = totalLinhas;
+        for (int i = 0; i < totalLinhas; i++)
+            candidatas[i] = i;
+    }
+
+    srand((unsigned int)time(NULL));
+    int indiceEscolhido = candidatas[rand() % totalCandidatas];
+
+    strcpy(palavra, palavras[indiceEscolhido]);
+    strcpy(dica, dicas[indiceEscolhido]);
+
+    guardarPalavraUsada(palavra);
+
+    return true;
 }
 
 unsigned int contarPalavras(void)
@@ -891,6 +937,105 @@ unsigned int palavraSorteada(void)
     return rand() % total;
 }
 
+bool palavraUsada(const char *palavra)
+{
+    FILE *arg = abrir("palavras_usadas.txt", "r");
+    if (arg == NULL)
+        return false;
+
+    char linha[51];
+    while (fgets(linha, sizeof(linha), arg))
+    {
+        linha[strcspn(linha, "\r\n")] = '\0';
+        if (strcmp(linha, palavra) == 0)
+        {
+            fecharArg(arg);
+            return true;
+        }
+    }
+
+    fecharArg(arg);
+    return false;
+}
+
+void guardarPalavraUsada(const char *palavra)
+{
+    if (palavraUsada(palavra))
+        return;
+
+    FILE *arg = abrir("palavras_usadas.txt", "a+");
+    if (arg == NULL)
+        return;
+
+    fprintf(arg, "%s\n", palavra);
+    fecharArg(arg);
+}
+
+void resetarPalavrasUsadas(void)
+{
+    FILE *arg = abrir("palavras_usadas.txt", "w");
+    if (arg != NULL)
+        fecharArg(arg);
+}
+
+void gravarHistorico(const char *palavra, bool venceu, int erros, int tentativas)
+{
+    FILE *arg = abrir("historico.txt", "a+");
+    if (arg == NULL)
+        return;
+
+    time_t t = time(NULL);
+    struct tm *tm_info = localtime(&t);
+    char tempo[26];
+    strftime(tempo, sizeof(tempo), "%Y-%m-%d %H:%M:%S", tm_info);
+
+    fprintf(arg, "%s | %s | erros: %d | tentativas: %d | %s\n", tempo, palavra, erros, tentativas, venceu ? "VENCEU" : "PERDEU");
+    fecharArg(arg);
+}
+
+void mostrarHistorico(void)
+{
+    FILE *arg = abrir("historico.txt", "r");
+    if (arg == NULL)
+    {
+        printf("Nenhum historico ainda.\n");
+        return;
+    }
+
+    char linha[256];
+    int count = 0;
+    printf("\n=== HISTORICO DAS PARTIDAS ===\n");
+    while (fgets(linha, sizeof(linha), arg))
+    {
+        printf("%s", linha);
+        count++;
+    }
+    if (count == 0)
+    {
+        printf("Nenhum historico ainda.\n");
+    }
+
+    fecharArg(arg);
+}
+
+void desenharBoneco(int erros)
+{
+    const char *forca[] = {
+        "\n  +---+\n  |   |\n      |\n      |\n      |\n      |\n========\n",
+        "\n  +---+\n  |   |\n  O   |\n      |\n      |\n      |\n========\n",
+        "\n  +---+\n  |   |\n  O   |\n  |   |\n      |\n      |\n========\n",
+        "\n  +---+\n  |   |\n  O   |\n /|   |\n      |\n      |\n========\n",
+        "\n  +---+\n  |   |\n  O   |\n /|\\  |\n      |\n      |\n========\n",
+        "\n  +---+\n  |   |\n  O   |\n /|\\  |\n /    |\n      |\n========\n",
+        "\n  +---+\n  |   |\n  O   |\n /|\\  |\n / \\  |\n      |\n========\n"};
+
+    if (erros < 0)
+        erros = 0;
+    if (erros > 6)
+        erros = 6;
+    printf("%s", forca[erros]);
+}
+
 void jogarForca(void)
 {
     printf("\n=== JOGO DA FORCA ===\n");
@@ -904,9 +1049,91 @@ void jogarForca(void)
         return;
     }
 
-    printf("Dica: %s\n", dica);
-    printf("(Modo simplificado) Palavra sorteada: %s\n", palavra);
-    printf("Implementacao completa do jogo pode ser adicionada aqui.\n");
+    int tamanho = (int)strlen(palavra);
+    char estado[51];
+    for (int i = 0; i < tamanho; i++)
+    {
+        if (palavra[i] == ' ')
+            estado[i] = ' ';
+        else
+            estado[i] = '_';
+    }
+    estado[tamanho] = '\0';
+
+    char errosLetras[27] = "";
+    int erros = 0;
+    bool ganhou = false;
+
+    while (erros < 6 && strcmp(estado, palavra) != 0)
+    {
+        printf("\nDica: %s\n", dica);
+        desenharBoneco(erros);
+        printf("Palavra: %s\n", estado);
+
+        printf("Letras erradas: %s\n", errosLetras);
+        printf("Digite uma letra: ");
+
+        char chute;
+        if (scanf(" %c", &chute) != 1)
+        {
+            while (getchar() != '\n')
+                ;
+            printf("Entrada invalida.\n");
+            continue;
+        }
+        while (getchar() != '\n')
+            ;
+
+        if (chute >= 'A' && chute <= 'Z')
+            chute += 'a' - 'A';
+
+        bool acertou = false;
+        for (int i = 0; i < tamanho; i++)
+        {
+            if (palavra[i] == chute)
+            {
+                estado[i] = chute;
+                acertou = true;
+            }
+        }
+
+        if (!acertou)
+        {
+            if (strchr(errosLetras, chute) == NULL)
+            {
+                int len = (int)strlen(errosLetras);
+                if (len < (int)sizeof(errosLetras) - 2)
+                {
+                    errosLetras[len] = chute;
+                    errosLetras[len + 1] = ' ';
+                    errosLetras[len + 2] = '\0';
+                }
+                erros++;
+            }
+            else
+            {
+                printf("Voce ja tentou esta letra.\n");
+            }
+        }
+    }
+
+    if (strcmp(estado, palavra) == 0)
+    {
+        ganhou = true;
+    }
+
+    desenharBoneco(erros);
+    if (ganhou)
+    {
+        printf("\nParabens! Voce venceu. Palavra: %s\n", palavra);
+    }
+    else
+    {
+        printf("\nVoce perdeu! Palavra correta: %s\n", palavra);
+    }
+
+    int tentativas = (int)strlen(errosLetras) > 0 ? (int)(strlen(errosLetras) / 2 + erros) : erros; // Aproximação simplificada
+    gravarHistorico(palavra, ganhou, erros, tentativas);
 }
 
 void mostrarPalavras(void)

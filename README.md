@@ -10,14 +10,22 @@ Este é um programa em **C** que gerencia dicas e palavras para o jogo da forca.
    - Adicionar novas dicas (máximo 200 caracteres)
    - Listar todas as dicas cadastradas
    - Remover dicas específicas com confirmação
+   - Editar dicas existentes
    - Validação de duplicatas
 
 2. **Gerenciar Palavras**
    - Adicionar palavras do jogo (máximo 50 caracteres)
-   - Vincular dicas às palavras automaticamente
    - Listar todas as palavras com suas dicas associadas
    - Remover palavras específicas com confirmação
+   - Editar palavras existentes
    - Validação de duplicatas
+
+3. **Jogo da Forca**
+   - Sorteio aleatório de palavra e dica
+   - Controle de tentativas e erros
+   - Desenho de boneco do enforcado
+   - Histórico de partidas (venceu/perdeu, erros, tentativas)
+   - Reset de palavras sorteadas
 
 ### Arquivos de Dados
 
@@ -117,6 +125,15 @@ main.exe
 5) Listar palavras
 6) Remover palavra
 
+--- JOGO ---
+7) Jogar forca
+
+--- EDITAR ---
+8) Editar dica
+9) Editar palavra
+10) Resetar palavras sorteadas
+11) Mostrar historico de partidas
+
 --- SAIR ---
 0) Sair
 ```
@@ -152,6 +169,20 @@ main.exe
 2. Escolha o número do item a remover
 3. Confirme a exclusão
 4. Arquivo é reescrito sem o item removido
+
+### Jogando Forca
+
+1. Selecione opção **7**
+2. Tente adivinhar letra por letra
+3. O sistema atualiza tentativas e erros
+4. Vence ao completar a palavra antes do boneco ser desenhado
+
+### Editar e Histórico
+
+- Opção **8**: editar texto da dica no arquivo `dicas.txt`
+- Opção **9**: editar palavra/dica no arquivo `palavras.txt`
+- Opção **10**: resetar o registro de palavras já sorteadas para novo ciclo
+- Opção **11**: exibir histórico (palavra, resultado, erros, tentativas)
 
 ---
 

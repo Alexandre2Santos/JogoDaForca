@@ -2,3 +2,4 @@ elevador
 voc‚ ‚ um frango
 ventilador|frango
 caneta|Sem dica
+cachorro|animal
